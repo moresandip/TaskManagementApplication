@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
-import { User } from '../../models/user.model';
+import { User } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-header',
@@ -16,16 +16,17 @@ import { User } from '../../models/user.model';
         
         <div class="user-menu" *ngIf="currentUser">
           <div class="user-info">
-            <span class="user-name">{{ currentUser.name }}</span>
-            <span class="user-role">{{ currentUser.role }}</span>
+            <span class="user-name">{{ getUserName() }}</span>
+            <span class="user-email">{{ currentUser.email }}</span>
           </div>
-          <button class="logout-btn" (click)="logout()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="logout-btn" (click)="logout()" [disabled]="isLoggingOut">
+            <span *ngIf="isLoggingOut" class="loading-spinner"></span>
+            <svg *ngIf="!isLoggingOut" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16,17 21,12 16,7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
-            Logout
+            {{ isLoggingOut ? 'Signing out...' : 'Logout' }}
           </button>
         </div>
       </div>
@@ -72,10 +73,9 @@ import { User } from '../../models/user.model';
       font-size: 0.875rem;
     }
 
-    .user-role {
+    .user-email {
       font-size: 0.75rem;
       color: #6b7280;
-      text-transform: capitalize;
     }
 
     .logout-btn {
@@ -92,9 +92,31 @@ import { User } from '../../models/user.model';
       transition: all 0.2s ease;
     }
 
-    .logout-btn:hover {
+    .logout-btn:hover:not(:disabled) {
       background: #e5e7eb;
       transform: translateY(-1px);
+    }
+
+    .logout-btn:disabled {
+      background: #f9fafb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top: 2px solid currentColor;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     @media (max-width: 768px) {
@@ -110,6 +132,7 @@ import { User } from '../../models/user.model';
 })
 export class HeaderComponent implements OnInit {
   currentUser: User | null = null;
+  isLoggingOut = false;
 
   constructor(private authService: AuthService) {}
 
@@ -119,7 +142,17 @@ export class HeaderComponent implements OnInit {
     });
   }
 
+  getUserName(): string {
+    if (this.currentUser?.user_metadata?.name) {
+      return this.currentUser.user_metadata.name;
+    }
+    return this.currentUser?.email?.split('@')[0] || 'User';
+  }
+
   logout() {
-    this.authService.logout();
+    this.isLoggingOut = true;
+    this.authService.logout().subscribe(() => {
+      this.isLoggingOut = false;
+    });
   }
 }

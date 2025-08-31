@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, from } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { supabase } from '../../lib/supabase';
 import { Task, TaskType, TaskStatus, TaskFilter } from '../models/task.model';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,85 +12,182 @@ export class TaskService {
   private tasksSubject = new BehaviorSubject<Task[]>([]);
   public tasks$ = this.tasksSubject.asObservable();
 
-  constructor() {
-    // Initialize with sample data
-    const sampleTasks: Task[] = [
-      {
-        id: '1',
-        date: new Date('2025-01-15'),
-        entityName: 'Acme Corp',
-        taskType: TaskType.CALL,
-        time: '10:00 AM',
-        contactPerson: 'John Smith',
-        note: 'Follow up on proposal',
-        status: TaskStatus.OPEN,
-        phoneNumber: '+1-555-0123'
-      },
-      {
-        id: '2',
-        date: new Date('2025-01-16'),
-        entityName: 'TechStart Inc',
-        taskType: TaskType.MEETING,
-        time: '2:00 PM',
-        contactPerson: 'Sarah Johnson',
-        note: 'Product demo presentation',
-        status: TaskStatus.CLOSED,
-        phoneNumber: '+1-555-0456'
-      },
-      {
-        id: '3',
-        date: new Date('2025-01-17'),
-        entityName: 'Global Solutions',
-        taskType: TaskType.VIDEO_CALL,
-        time: '11:30 AM',
-        contactPerson: 'Mike Davis',
-        status: TaskStatus.OPEN,
-        phoneNumber: '+1-555-0789'
+  constructor(private authService: AuthService) {
+    // Load tasks when user changes
+    this.authService.currentUser$.subscribe(user => {
+      if (user) {
+        this.loadTasks();
+      } else {
+        this.tasksSubject.next([]);
       }
-    ];
-    this.tasksSubject.next(sampleTasks);
+    });
+  }
+
+  private async loadTasks() {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error loading tasks:', error);
+        return;
+      }
+
+      const tasks: Task[] = data.map(row => ({
+        id: row.id,
+        date: new Date(row.date),
+        entityName: row.entity_name,
+        taskType: row.task_type as TaskType,
+        time: row.time,
+        contactPerson: row.contact_person,
+        note: row.note,
+        status: row.status as TaskStatus,
+        phoneNumber: row.phone_number
+      }));
+
+      this.tasksSubject.next(tasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    }
   }
 
   getTasks(): Observable<Task[]> {
     return this.tasks$;
   }
 
-  addTask(task: Omit<Task, 'id'>): void {
-    const newTask: Task = {
-      ...task,
-      id: this.generateId()
-    };
-    const currentTasks = this.tasksSubject.value;
-    this.tasksSubject.next([...currentTasks, newTask]);
-  }
-
-  updateTask(updatedTask: Task): void {
-    const currentTasks = this.tasksSubject.value;
-    const index = currentTasks.findIndex(task => task.id === updatedTask.id);
-    if (index !== -1) {
-      currentTasks[index] = updatedTask;
-      this.tasksSubject.next([...currentTasks]);
+  addTask(task: Omit<Task, 'id'>): Observable<{ success: boolean; message?: string }> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      return from([{ success: false, message: 'User not authenticated' }]);
     }
+
+    return from(
+      supabase
+        .from('tasks')
+        .insert({
+          user_id: currentUser.id,
+          date: task.date.toISOString().split('T')[0],
+          entity_name: task.entityName,
+          task_type: task.taskType,
+          time: task.time,
+          contact_person: task.contactPerson,
+          note: task.note || '',
+          status: task.status,
+          phone_number: task.phoneNumber || ''
+        })
+    ).pipe(
+      map(({ error }) => {
+        if (error) {
+          console.error('Error adding task:', error);
+          return { success: false, message: 'Failed to create task' };
+        }
+        this.loadTasks(); // Reload tasks
+        return { success: true };
+      }),
+      catchError(error => {
+        console.error('Error adding task:', error);
+        return [{ success: false, message: 'Failed to create task' }];
+      })
+    );
   }
 
-  deleteTask(taskId: string): void {
-    const currentTasks = this.tasksSubject.value;
-    const filteredTasks = currentTasks.filter(task => task.id !== taskId);
-    this.tasksSubject.next(filteredTasks);
+  updateTask(updatedTask: Task): Observable<{ success: boolean; message?: string }> {
+    return from(
+      supabase
+        .from('tasks')
+        .update({
+          date: updatedTask.date.toISOString().split('T')[0],
+          entity_name: updatedTask.entityName,
+          task_type: updatedTask.taskType,
+          time: updatedTask.time,
+          contact_person: updatedTask.contactPerson,
+          note: updatedTask.note || '',
+          status: updatedTask.status,
+          phone_number: updatedTask.phoneNumber || '',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', updatedTask.id)
+    ).pipe(
+      map(({ error }) => {
+        if (error) {
+          console.error('Error updating task:', error);
+          return { success: false, message: 'Failed to update task' };
+        }
+        this.loadTasks(); // Reload tasks
+        return { success: true };
+      }),
+      catchError(error => {
+        console.error('Error updating task:', error);
+        return [{ success: false, message: 'Failed to update task' }];
+      })
+    );
   }
 
-  duplicateTask(taskId: string): void {
+  deleteTask(taskId: string): Observable<{ success: boolean; message?: string }> {
+    return from(
+      supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+    ).pipe(
+      map(({ error }) => {
+        if (error) {
+          console.error('Error deleting task:', error);
+          return { success: false, message: 'Failed to delete task' };
+        }
+        this.loadTasks(); // Reload tasks
+        return { success: true };
+      }),
+      catchError(error => {
+        console.error('Error deleting task:', error);
+        return [{ success: false, message: 'Failed to delete task' }];
+      })
+    );
+  }
+
+  duplicateTask(taskId: string): Observable<{ success: boolean; message?: string }> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      return from([{ success: false, message: 'User not authenticated' }]);
+    }
+
     const currentTasks = this.tasksSubject.value;
     const taskToDuplicate = currentTasks.find(task => task.id === taskId);
-    if (taskToDuplicate) {
-      const duplicatedTask: Task = {
-        ...taskToDuplicate,
-        id: this.generateId(),
-        date: new Date(),
-        status: TaskStatus.OPEN
-      };
-      this.tasksSubject.next([...currentTasks, duplicatedTask]);
+    
+    if (!taskToDuplicate) {
+      return from([{ success: false, message: 'Task not found' }]);
     }
+
+    return from(
+      supabase
+        .from('tasks')
+        .insert({
+          user_id: currentUser.id,
+          date: new Date().toISOString().split('T')[0],
+          entity_name: taskToDuplicate.entityName,
+          task_type: taskToDuplicate.taskType,
+          time: taskToDuplicate.time,
+          contact_person: taskToDuplicate.contactPerson,
+          note: taskToDuplicate.note || '',
+          status: 'Open',
+          phone_number: taskToDuplicate.phoneNumber || ''
+        })
+    ).pipe(
+      map(({ error }) => {
+        if (error) {
+          console.error('Error duplicating task:', error);
+          return { success: false, message: 'Failed to duplicate task' };
+        }
+        this.loadTasks(); // Reload tasks
+        return { success: true };
+      }),
+      catchError(error => {
+        console.error('Error duplicating task:', error);
+        return [{ success: false, message: 'Failed to duplicate task' }];
+      })
+    );
   }
 
   filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
@@ -126,13 +226,13 @@ export class TaskService {
         return 0;
       }
 
-      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+      // Additional undefined checks for the comparison operations
+      if (aValue !== undefined && bValue !== undefined) {
+        if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+      }
+      
       return 0;
     });
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
   }
 }

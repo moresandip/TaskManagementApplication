@@ -1,6 +1,19 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { User, LoginCredentials, RegisterData } from '../models/user.model';
+import { BehaviorSubject, Observable, from } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { supabase } from '../../lib/supabase';
+import { User } from '@supabase/supabase-js';
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  name: string;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -9,85 +22,72 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  private users: User[] = [
-    {
-      id: '1',
-      email: 'admin@example.com',
-      name: 'Admin User',
-      role: 'admin'
-    },
-    {
-      id: '2',
-      email: 'user@example.com',
-      name: 'Regular User',
-      role: 'user'
-    }
-  ];
-
   constructor() {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      this.currentUserSubject.next(JSON.parse(storedUser));
+    // Check for existing session
+    this.initializeAuth();
+  }
+
+  private async initializeAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      this.currentUserSubject.next(session.user);
     }
+
+    // Listen for auth changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      this.currentUserSubject.next(session?.user || null);
+    });
   }
 
   login(credentials: LoginCredentials): Observable<{ success: boolean; message?: string; user?: User }> {
-    return new Observable(observer => {
-      // Simulate API call delay
-      setTimeout(() => {
-        // Demo credentials
-        const validCredentials = [
-          { email: 'admin@example.com', password: 'admin123' },
-          { email: 'user@example.com', password: 'user123' }
-        ];
-
-        const isValid = validCredentials.some(cred => 
-          cred.email === credentials.email && cred.password === credentials.password
-        );
-
-        if (isValid) {
-          const user = this.users.find(u => u.email === credentials.email);
-          if (user) {
-            this.currentUserSubject.next(user);
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            observer.next({ success: true, user });
-          }
-        } else {
-          observer.next({ success: false, message: 'Invalid email or password' });
+    return from(
+      supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password
+      })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          return { success: false, message: error.message };
         }
-        observer.complete();
-      }, 1000);
-    });
+        return { success: true, user: data.user };
+      }),
+      catchError(error => {
+        return [{ success: false, message: 'Login failed. Please try again.' }];
+      })
+    );
   }
 
   register(data: RegisterData): Observable<{ success: boolean; message?: string; user?: User }> {
-    return new Observable(observer => {
-      setTimeout(() => {
-        // Check if user already exists
-        const existingUser = this.users.find(u => u.email === data.email);
-        if (existingUser) {
-          observer.next({ success: false, message: 'User with this email already exists' });
-        } else {
-          const newUser: User = {
-            id: this.generateId(),
-            email: data.email,
-            name: data.name,
-            role: 'user'
-          };
-          this.users.push(newUser);
-          this.currentUserSubject.next(newUser);
-          localStorage.setItem('currentUser', JSON.stringify(newUser));
-          observer.next({ success: true, user: newUser });
+    return from(
+      supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name
+          }
         }
-        observer.complete();
-      }, 1000);
-    });
+      })
+    ).pipe(
+      map(({ data: authData, error }) => {
+        if (error) {
+          return { success: false, message: error.message };
+        }
+        return { success: true, user: authData.user };
+      }),
+      catchError(error => {
+        return [{ success: false, message: 'Registration failed. Please try again.' }];
+      })
+    );
   }
 
-  logout(): void {
-    this.currentUserSubject.next(null);
-    localStorage.removeItem('currentUser');
+  logout(): Observable<void> {
+    return from(supabase.auth.signOut()).pipe(
+      map(() => {
+        this.currentUserSubject.next(null);
+      })
+    );
   }
 
   getCurrentUser(): User | null {
@@ -96,9 +96,5 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return this.currentUserSubject.value !== null;
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
   }
 }

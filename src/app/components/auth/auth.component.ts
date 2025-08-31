@@ -1,8 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../services/auth.service';
-import { LoginCredentials, RegisterData } from '../../models/user.model';
+import { AuthService, LoginCredentials, RegisterData } from '../../services/auth.service';
 
 @Component({
   selector: 'app-auth',
@@ -49,12 +48,17 @@ import { LoginCredentials, RegisterData } from '../../models/user.model';
               name="password" 
               [(ngModel)]="formData.password" 
               required
+              minlength="6"
               class="form-input"
               placeholder="Enter your password">
           </div>
 
           <div class="error-message" *ngIf="errorMessage">
             {{ errorMessage }}
+          </div>
+
+          <div class="success-message" *ngIf="successMessage">
+            {{ successMessage }}
           </div>
 
           <button type="submit" class="auth-btn" [disabled]="!authForm.valid || isLoading">
@@ -72,10 +76,10 @@ import { LoginCredentials, RegisterData } from '../../models/user.model';
           </p>
         </div>
 
-        <div class="demo-credentials" *ngIf="isLoginMode">
-          <h3>Demo Credentials:</h3>
-          <p><strong>Admin:</strong> admin&#64;example.com / admin123</p>
-          <p><strong>User:</strong> user&#64;example.com / user123</p>
+        <div class="demo-info" *ngIf="!isLoginMode">
+          <p class="demo-note">
+            <strong>Note:</strong> This is a demo application. You can create a real account or use the demo credentials above.
+          </p>
         </div>
       </div>
     </div>
@@ -159,6 +163,16 @@ import { LoginCredentials, RegisterData } from '../../models/user.model';
       border: 1px solid #fecaca;
     }
 
+    .success-message {
+      background: #f0fdf4;
+      color: #059669;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-bottom: 20px;
+      border: 1px solid #bbf7d0;
+    }
+
     .auth-btn {
       width: 100%;
       padding: 12px 24px;
@@ -226,7 +240,7 @@ import { LoginCredentials, RegisterData } from '../../models/user.model';
       color: #1d4ed8;
     }
 
-    .demo-credentials {
+    .demo-info {
       margin-top: 24px;
       padding: 16px;
       background: #f9fafb;
@@ -234,17 +248,11 @@ import { LoginCredentials, RegisterData } from '../../models/user.model';
       border: 1px solid #e5e7eb;
     }
 
-    .demo-credentials h3 {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: #374151;
-      margin: 0 0 8px 0;
-    }
-
-    .demo-credentials p {
+    .demo-note {
       font-size: 0.75rem;
       color: #6b7280;
-      margin: 4px 0;
+      margin: 0;
+      line-height: 1.5;
     }
 
     @media (max-width: 480px) {
@@ -258,6 +266,7 @@ export class AuthComponent {
   isLoginMode = true;
   isLoading = false;
   errorMessage = '';
+  successMessage = '';
 
   formData: any = {
     email: '',
@@ -270,6 +279,7 @@ export class AuthComponent {
   onSubmit() {
     this.isLoading = true;
     this.errorMessage = '';
+    this.successMessage = '';
 
     if (this.isLoginMode) {
       const credentials: LoginCredentials = {
@@ -292,7 +302,11 @@ export class AuthComponent {
 
       this.authService.register(registerData).subscribe(result => {
         this.isLoading = false;
-        if (!result.success) {
+        if (result.success) {
+          this.successMessage = 'Account created successfully! You can now sign in.';
+          this.toggleMode();
+          this.formData = { email: '', password: '', name: '' };
+        } else {
           this.errorMessage = result.message || 'Registration failed';
         }
       });
@@ -302,6 +316,7 @@ export class AuthComponent {
   toggleMode() {
     this.isLoginMode = !this.isLoginMode;
     this.errorMessage = '';
+    this.successMessage = '';
     this.formData = {
       email: '',
       password: '',

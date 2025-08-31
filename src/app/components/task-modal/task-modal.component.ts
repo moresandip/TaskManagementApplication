@@ -320,11 +320,10 @@ export class TaskModalComponent implements OnInit {
   };
 
   ngOnInit() {
+    this.resetForm();
     if (this.task) {
       this.isEdit = true;
       this.taskData = { ...this.task };
-    } else {
-      this.resetForm();
     }
   }
 

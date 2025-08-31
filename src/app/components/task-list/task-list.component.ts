@@ -527,13 +527,18 @@ export class TaskListComponent implements OnInit {
   }
 
   onTaskSave(task: Task) {
-    if (this.selectedTask) {
-      this.taskService.updateTask(task);
-    } else {
-      this.taskService.addTask(task);
-    }
-    this.isModalVisible = false;
-    this.selectedTask = null;
+    const operation = this.selectedTask 
+      ? this.taskService.updateTask(task)
+      : this.taskService.addTask(task);
+
+    operation.subscribe(result => {
+      if (result.success) {
+        this.isModalVisible = false;
+        this.selectedTask = null;
+      } else {
+        alert(result.message || 'Operation failed');
+      }
+    });
   }
 
   onModalCancel() {
@@ -542,20 +547,32 @@ export class TaskListComponent implements OnInit {
   }
 
   duplicateTask(taskId: string) {
-    this.taskService.duplicateTask(taskId);
+    this.taskService.duplicateTask(taskId).subscribe(result => {
+      if (!result.success) {
+        alert(result.message || 'Failed to duplicate task');
+      }
+    });
     this.openDropdown = null;
   }
 
   deleteTask(taskId: string) {
     if (confirm('Are you sure you want to delete this task?')) {
-      this.taskService.deleteTask(taskId);
+      this.taskService.deleteTask(taskId).subscribe(result => {
+        if (!result.success) {
+          alert(result.message || 'Failed to delete task');
+        }
+      });
     }
     this.openDropdown = null;
   }
 
   changeStatus(task: Task, newStatus: TaskStatus) {
     const updatedTask = { ...task, status: newStatus };
-    this.taskService.updateTask(updatedTask);
+    this.taskService.updateTask(updatedTask).subscribe(result => {
+      if (!result.success) {
+        alert(result.message || 'Failed to update status');
+      }
+    });
     this.openDropdown = null;
   }
 
@@ -579,7 +596,11 @@ export class TaskListComponent implements OnInit {
   saveEdit(task: Task, field: keyof Task) {
     if (this.editValue !== task[field]) {
       const updatedTask = { ...task, [field]: this.editValue };
-      this.taskService.updateTask(updatedTask);
+      this.taskService.updateTask(updatedTask).subscribe(result => {
+        if (!result.success) {
+          alert(result.message || 'Failed to update task');
+        }
+      });
     }
     this.cancelEdit();
   }
