@@ -41,7 +41,7 @@ export class AuthService {
     }
   }
 
-  login(credentials: LoginCredentials): Observable<{ success: boolean; message?: string; user?: User }> {
+  login(credentials: LoginCredentials): Observable<{ success: boolean; message?: string; user?: User | null }> {
     return from(
       supabase.auth.signInWithPassword({
         email: credentials.email,
@@ -61,7 +61,7 @@ export class AuthService {
     );
   }
 
-  register(data: RegisterData): Observable<{ success: boolean; message?: string; user?: User }> {
+  register(data: RegisterData): Observable<{ success: boolean; message?: string; user?: User | null }> {
     return from(
       supabase.auth.signUp({
         email: data.email,
