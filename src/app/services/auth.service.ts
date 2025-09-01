@@ -23,20 +23,22 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor() {
-    // Check for existing session
     this.initializeAuth();
   }
 
   private async initializeAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      this.currentUserSubject.next(session.user);
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        this.currentUserSubject.next(session.user);
+      }
 
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange((event, session) => {
-      this.currentUserSubject.next(session?.user || null);
-    });
+      supabase.auth.onAuthStateChange((event, session) => {
+        this.currentUserSubject.next(session?.user || null);
+      });
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+    }
   }
 
   login(credentials: LoginCredentials): Observable<{ success: boolean; message?: string; user?: User }> {
@@ -53,6 +55,7 @@ export class AuthService {
         return { success: true, user: data.user };
       }),
       catchError(error => {
+        console.error('Login error:', error);
         return [{ success: false, message: 'Login failed. Please try again.' }];
       })
     );
@@ -77,6 +80,7 @@ export class AuthService {
         return { success: true, user: authData.user };
       }),
       catchError(error => {
+        console.error('Registration error:', error);
         return [{ success: false, message: 'Registration failed. Please try again.' }];
       })
     );
@@ -86,6 +90,11 @@ export class AuthService {
     return from(supabase.auth.signOut()).pipe(
       map(() => {
         this.currentUserSubject.next(null);
+      }),
+      catchError(error => {
+        console.error('Logout error:', error);
+        this.currentUserSubject.next(null);
+        return [];
       })
     );
   }

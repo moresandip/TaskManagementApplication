@@ -76,9 +76,9 @@ import { AuthService, LoginCredentials, RegisterData } from '../../services/auth
           </p>
         </div>
 
-        <div class="demo-info" *ngIf="!isLoginMode">
+        <div class="demo-info">
           <p class="demo-note">
-            <strong>Note:</strong> This is a demo application. You can create a real account or use the demo credentials above.
+            <strong>Note:</strong> Create a real account with your email and password. All data will be securely stored in the database.
           </p>
         </div>
       </div>
@@ -243,14 +243,14 @@ import { AuthService, LoginCredentials, RegisterData } from '../../services/auth
     .demo-info {
       margin-top: 24px;
       padding: 16px;
-      background: #f9fafb;
+      background: #f0f9ff;
       border-radius: 8px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #bae6fd;
     }
 
     .demo-note {
       font-size: 0.75rem;
-      color: #6b7280;
+      color: #0369a1;
       margin: 0;
       line-height: 1.5;
     }

@@ -536,7 +536,8 @@ export class TaskListComponent implements OnInit {
         this.isModalVisible = false;
         this.selectedTask = null;
       } else {
-        alert(result.message || 'Operation failed');
+        console.error('Task operation failed:', result.message);
+        this.showErrorMessage(result.message || 'Operation failed. Please try again.');
       }
     });
   }
@@ -549,7 +550,8 @@ export class TaskListComponent implements OnInit {
   duplicateTask(taskId: string) {
     this.taskService.duplicateTask(taskId).subscribe(result => {
       if (!result.success) {
-        alert(result.message || 'Failed to duplicate task');
+        console.error('Failed to duplicate task:', result.message);
+        this.showErrorMessage('Failed to duplicate task. Please try again.');
       }
     });
     this.openDropdown = null;
@@ -559,7 +561,8 @@ export class TaskListComponent implements OnInit {
     if (confirm('Are you sure you want to delete this task?')) {
       this.taskService.deleteTask(taskId).subscribe(result => {
         if (!result.success) {
-          alert(result.message || 'Failed to delete task');
+          console.error('Failed to delete task:', result.message);
+          this.showErrorMessage('Failed to delete task. Please try again.');
         }
       });
     }
@@ -570,7 +573,9 @@ export class TaskListComponent implements OnInit {
     const updatedTask = { ...task, status: newStatus };
     this.taskService.updateTask(updatedTask).subscribe(result => {
       if (!result.success) {
-        alert(result.message || 'Failed to update status');
+        console.error('Failed to update status:', result.message);
+        // Show user-friendly error message
+        this.showErrorMessage('Failed to update task status. Please try again.');
       }
     });
     this.openDropdown = null;
@@ -598,7 +603,8 @@ export class TaskListComponent implements OnInit {
       const updatedTask = { ...task, [field]: this.editValue };
       this.taskService.updateTask(updatedTask).subscribe(result => {
         if (!result.success) {
-          alert(result.message || 'Failed to update task');
+          console.error('Failed to update task:', result.message);
+          this.showErrorMessage('Failed to update task. Please try again.');
         }
       });
     }
@@ -660,5 +666,27 @@ export class TaskListComponent implements OnInit {
 
   trackByTaskId(index: number, task: Task): string {
     return task.id;
+  }
+
+  private showErrorMessage(message: string) {
+    // Simple error display - you could enhance this with a toast notification
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-toast';
+    errorDiv.textContent = message;
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #dc2626;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      z-index: 1000;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    `;
+    document.body.appendChild(errorDiv);
+    setTimeout(() => {
+      document.body.removeChild(errorDiv);
+    }, 3000);
   }
 }

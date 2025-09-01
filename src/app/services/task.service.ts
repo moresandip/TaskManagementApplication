@@ -13,7 +13,6 @@ export class TaskService {
   public tasks$ = this.tasksSubject.asObservable();
 
   constructor(private authService: AuthService) {
-    // Load tasks when user changes
     this.authService.currentUser$.subscribe(user => {
       if (user) {
         this.loadTasks();
@@ -83,7 +82,7 @@ export class TaskService {
           console.error('Error adding task:', error);
           return { success: false, message: 'Failed to create task' };
         }
-        this.loadTasks(); // Reload tasks
+        this.loadTasks();
         return { success: true };
       }),
       catchError(error => {
@@ -115,7 +114,7 @@ export class TaskService {
           console.error('Error updating task:', error);
           return { success: false, message: 'Failed to update task' };
         }
-        this.loadTasks(); // Reload tasks
+        this.loadTasks();
         return { success: true };
       }),
       catchError(error => {
@@ -137,7 +136,7 @@ export class TaskService {
           console.error('Error deleting task:', error);
           return { success: false, message: 'Failed to delete task' };
         }
-        this.loadTasks(); // Reload tasks
+        this.loadTasks();
         return { success: true };
       }),
       catchError(error => {
@@ -180,7 +179,7 @@ export class TaskService {
           console.error('Error duplicating task:', error);
           return { success: false, message: 'Failed to duplicate task' };
         }
-        this.loadTasks(); // Reload tasks
+        this.loadTasks();
         return { success: true };
       }),
       catchError(error => {
@@ -207,7 +206,6 @@ export class TaskService {
       let aValue = a[column];
       let bValue = b[column];
 
-      // Handle undefined values - place them at the end
       if (aValue === undefined && bValue === undefined) return 0;
       if (aValue === undefined) return direction === 'asc' ? 1 : -1;
       if (bValue === undefined) return direction === 'asc' ? -1 : 1;
@@ -226,7 +224,6 @@ export class TaskService {
         return 0;
       }
 
-      // Additional undefined checks for the comparison operations
       if (aValue !== undefined && bValue !== undefined) {
         if (aValue < bValue) return direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return direction === 'asc' ? 1 : -1;
