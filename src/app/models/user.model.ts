@@ -1,8 +1,7 @@
-export interface User {
+export interface AppUser {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'user';
 }
 
 export interface LoginCredentials {

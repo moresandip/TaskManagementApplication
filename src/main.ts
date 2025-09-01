@@ -5,7 +5,7 @@ import { TaskListComponent } from './app/components/task-list/task-list.componen
 import { AuthComponent } from './app/components/auth/auth.component';
 import { HeaderComponent } from './app/components/header/header.component';
 import { AuthService } from './app/services/auth.service';
-import { User } from './app/models/user.model';
+import { AppUser } from './app/models/user.model';
 
 @Component({
   selector: 'app-root',
@@ -58,7 +58,7 @@ import { User } from './app/models/user.model';
   imports: [CommonModule, TaskListComponent, AuthComponent, HeaderComponent]
 })
 export class App {
-  currentUser: User | null = null;
+  currentUser: AppUser | null = null;
   isLoading = true;
 
   constructor(private authService: AuthService) {}

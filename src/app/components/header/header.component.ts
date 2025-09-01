@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
-import { User } from '@supabase/supabase-js';
+import { AppUser } from '../../models/user.model';
 
 @Component({
   selector: 'app-header',
@@ -131,7 +131,7 @@ import { User } from '@supabase/supabase-js';
   `]
 })
 export class HeaderComponent implements OnInit {
-  currentUser: User | null = null;
+  currentUser: AppUser | null = null;
   isLoggingOut = false;
 
   constructor(private authService: AuthService) {}
@@ -143,10 +143,7 @@ export class HeaderComponent implements OnInit {
   }
 
   getUserName(): string {
-    if (this.currentUser?.user_metadata?.['name']) {
-      return this.currentUser.user_metadata['name'];
-    }
-    return this.currentUser?.email?.split('@')[0] || 'User';
+    return this.currentUser?.name || 'User';
   }
 
   logout() {
