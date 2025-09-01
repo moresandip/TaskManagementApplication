@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, from } from 'rxjs';
+import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { supabase } from '../../lib/supabase';
 import { User } from '@supabase/supabase-js';
@@ -56,7 +56,7 @@ export class AuthService {
       }),
       catchError(error => {
         console.error('Login error:', error);
-        return [{ success: false, message: 'Login failed. Please try again.' }];
+        return of({ success: false, message: 'Login failed. Please try again.' });
       })
     );
   }
@@ -81,7 +81,7 @@ export class AuthService {
       }),
       catchError(error => {
         console.error('Registration error:', error);
-        return [{ success: false, message: 'Registration failed. Please try again.' }];
+        return of({ success: false, message: 'Registration failed. Please try again.' });
       })
     );
   }

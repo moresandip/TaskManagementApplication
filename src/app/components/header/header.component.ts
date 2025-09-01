@@ -143,8 +143,8 @@ export class HeaderComponent implements OnInit {
   }
 
   getUserName(): string {
-    if (this.currentUser?.user_metadata?.name) {
-      return this.currentUser.user_metadata.name;
+    if (this.currentUser?.user_metadata?.['name']) {
+      return this.currentUser.user_metadata['name'];
     }
     return this.currentUser?.email?.split('@')[0] || 'User';
   }
